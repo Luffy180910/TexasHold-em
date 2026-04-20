@@ -4,6 +4,10 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const { registerSocketHandlers } = require('./socket/handlers');
 const roomRoutes = require('./routes/rooms');
+const { isAvailable } = require('./redis/client');
+
+// 预加载 Redis 客户端（建立连接）
+require('./redis/client').getClient();
 
 const app = express();
 const httpServer = createServer(app);
@@ -33,6 +37,15 @@ app.use(express.json());
 
 // ── REST API 路由（房间列表等）──
 app.use('/api/rooms', roomRoutes);
+
+// ── 健康检查 endpoint ──
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    redis: isAvailable() ? 'connected' : 'unavailable (using memory fallback)',
+    uptime: Math.floor(process.uptime()),
+  });
+});
 
 // ── 注册所有 Socket 事件处理器 ──
 registerSocketHandlers(io);
