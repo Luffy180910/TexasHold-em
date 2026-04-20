@@ -8,15 +8,27 @@ const roomRoutes = require('./routes/rooms');
 const app = express();
 const httpServer = createServer(app);
 
+const defaultOrigins = ['http://localhost:5173', 'http://127.0.0.1:5173'];
+const customOrigins = (process.env.CORS_ORIGIN || '')
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
+const allowedOrigins = [...new Set([...defaultOrigins, ...customOrigins])];
+
+const corsOptions = {
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error(`Not allowed by CORS: ${origin}`));
+  },
+  methods: ['GET', 'POST'],
+};
+
 // ── Socket.io 配置 ──
 const io = new Server(httpServer, {
-  cors: {
-    origin: 'http://localhost:5173', // Vite 默认端口
-    methods: ['GET', 'POST'],
-  },
+  cors: corsOptions,
 });
 
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // ── REST API 路由（房间列表等）──
