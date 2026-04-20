@@ -28,8 +28,10 @@ function handRank(cards) {
   const suits = cards.map(c => c.suit);
   const counts = {};
   for (const v of vals) counts[v] = (counts[v] || 0) + 1;
-  const groups = Object.values(counts).sort((a, b) => b - a);
-  const sortedVals = Object.keys(counts).map(Number).sort((a, b) => b - a);
+  const grouped = Object.entries(counts)
+    .map(([value, count]) => ({ value: Number(value), count }))
+    .sort((a, b) => (b.count - a.count) || (b.value - a.value));
+  const groups = grouped.map(g => g.count);
 
   const isFlush = suits.every(s => s === suits[0]);
   let isStraight = false, highStraight = 0;
@@ -54,7 +56,34 @@ function handRank(cards) {
   else if (groups[0] === 2) { rank = 1; label = '一对'; }
   else { rank = 0; label = '高牌'; }
 
-  return { rank, high: isStraight ? highStraight : sortedVals[0], label, tiebreak: sortedVals };
+  let tiebreak = [];
+  if (rank === 9 || rank === 8 || rank === 4) {
+    tiebreak = [highStraight];
+  } else if (rank === 7) {
+    const quad = grouped.find(g => g.count === 4)?.value;
+    const kicker = grouped.find(g => g.count === 1)?.value;
+    tiebreak = [quad, kicker];
+  } else if (rank === 6) {
+    const trip = grouped.find(g => g.count === 3)?.value;
+    const pair = grouped.find(g => g.count === 2)?.value;
+    tiebreak = [trip, pair];
+  } else if (rank === 5 || rank === 0) {
+    tiebreak = vals.slice();
+  } else if (rank === 3) {
+    const trip = grouped.find(g => g.count === 3)?.value;
+    const kickers = grouped.filter(g => g.count === 1).map(g => g.value).sort((a, b) => b - a);
+    tiebreak = [trip, ...kickers];
+  } else if (rank === 2) {
+    const pairs = grouped.filter(g => g.count === 2).map(g => g.value).sort((a, b) => b - a);
+    const kicker = grouped.find(g => g.count === 1)?.value;
+    tiebreak = [...pairs, kicker];
+  } else if (rank === 1) {
+    const pair = grouped.find(g => g.count === 2)?.value;
+    const kickers = grouped.filter(g => g.count === 1).map(g => g.value).sort((a, b) => b - a);
+    tiebreak = [pair, ...kickers];
+  }
+
+  return { rank, high: isStraight ? highStraight : tiebreak[0], label, tiebreak };
 }
 
 function bestHand(hand, community) {
@@ -283,24 +312,52 @@ class PokerGame {
   _showdown() {
     this.phase = 'showdown';
     const alive = this.players.filter(p => !p.folded);
-    let winner = null, bestR = null;
+    let bestR = null;
+    const winners = [];
 
     for (const p of alive) {
       const r = bestHand(p.hand, this.community);
       p._rank = r;
-      if (!bestR || r.rank > bestR.rank ||
-         (r.rank === bestR.rank && compareTiebreak(r, bestR) > 0)) {
-        bestR = r; winner = p;
+      if (!bestR) {
+        bestR = r;
+        winners.length = 0;
+        winners.push(p);
+        continue;
+      }
+      if (r.rank > bestR.rank || (r.rank === bestR.rank && compareTiebreak(r, bestR) > 0)) {
+        bestR = r;
+        winners.length = 0;
+        winners.push(p);
+      } else if (r.rank === bestR.rank && compareTiebreak(r, bestR) === 0) {
+        winners.push(p);
       }
     }
 
-    winner.chips += this.pot;
-    this._addLog(`${winner.name} 赢得底池 ${this.pot} · ${bestR.label}`);
+    const totalPot = this.pot;
+    const split = Math.floor(totalPot / winners.length);
+    let remainder = totalPot % winners.length;
+    const winnerResults = winners.map((p) => {
+      const gain = split + (remainder-- > 0 ? 1 : 0);
+      p.chips += gain;
+      return { id: p.id, name: p.name, hand: bestR.label, gain };
+    });
+
+    if (winnerResults.length === 1) {
+      this._addLog(`${winnerResults[0].name} 赢得底池 ${totalPot} · ${bestR.label}`);
+    } else {
+      this._addLog(`${winnerResults.map(w => w.name).join(' / ')} 平分底池 ${totalPot} · ${bestR.label}`);
+    }
     this.dealer = (this.dealer + 1) % this.players.length;
 
     return {
       type: 'showdown',
-      winner: { id: winner.id, name: winner.name, hand: bestR.label, pot: this.pot },
+      winner: {
+        id: winnerResults[0].id,
+        name: winnerResults.map(w => w.name).join(' / '),
+        hand: bestR.label,
+        pot: totalPot,
+      },
+      winners: winnerResults,
       players: alive.map(p => ({ id: p.id, name: p.name, hand: p.hand, rank: p._rank?.label })),
       state: this._getState(),
     };

@@ -6,10 +6,11 @@ import GamePage from './components/game/GamePage';
 import './index.css';
 
 export default function App() {
-  const { page, error, initSocket } = useStore();
+  const { page, error, initSocket, cleanupSocket } = useStore();
 
   useEffect(() => {
     initSocket();
+    return () => cleanupSocket();
   }, []);
 
   return (
