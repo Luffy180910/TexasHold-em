@@ -368,6 +368,47 @@ class PokerGame {
     if (this.log.length > 50) this.log.pop();
   }
 
+  // ── 序列化 / 反序列化（用于 Redis 持久化）──
+
+  toJSON() {
+    return {
+      roomId: this.roomId,
+      players: this.players,
+      deck: this.deck,
+      community: this.community,
+      pot: this.pot,
+      sidePots: this.sidePots,
+      phase: this.phase,
+      dealer: this.dealer,
+      currentPlayer: this.currentPlayer,
+      currentBet: this.currentBet,
+      smallBlind: this.smallBlind,
+      bigBlind: this.bigBlind,
+      round: this.round,
+      actedThisRound: [...this.actedThisRound],
+      log: this.log,
+    };
+  }
+
+  static fromJSON(data) {
+    const game = new PokerGame(data.roomId, []);
+    game.players = data.players;
+    game.deck = data.deck;
+    game.community = data.community;
+    game.pot = data.pot;
+    game.sidePots = data.sidePots || [];
+    game.phase = data.phase;
+    game.dealer = data.dealer;
+    game.currentPlayer = data.currentPlayer;
+    game.currentBet = data.currentBet;
+    game.smallBlind = data.smallBlind;
+    game.bigBlind = data.bigBlind;
+    game.round = data.round;
+    game.actedThisRound = new Set(data.actedThisRound);
+    game.log = data.log || [];
+    return game;
+  }
+
   // 构建发给客户端的状态（隐藏其他玩家手牌）
   getStateFor(playerId) {
     const state = this._getState();
