@@ -23,6 +23,10 @@ const EVENTS = {
 };
 
 function registerSocketHandlers(io) {
+  const broadcastRoomsList = () => {
+    io.emit(EVENTS.ROOMS_LIST, listRooms());
+  };
+
   io.on('connection', (socket) => {
     console.log(`✅ 玩家连接: ${socket.id}`);
     let currentRoom = null;
@@ -36,6 +40,7 @@ function registerSocketHandlers(io) {
       currentRoom = roomId;
       socket.join(roomId);
       socket.emit(EVENTS.ROOM_UPDATED, getRoomInfo(roomId));
+      broadcastRoomsList();
       console.log(`🏠 房间创建: ${roomId} by ${playerName}`);
     });
 
@@ -50,6 +55,7 @@ function registerSocketHandlers(io) {
       socket.join(roomId);
       // 广播给房间所有人
       io.to(roomId).emit(EVENTS.ROOM_UPDATED, getRoomInfo(roomId));
+      broadcastRoomsList();
       console.log(`👤 ${playerName} 加入房间 ${roomId}`);
     });
 
@@ -61,11 +67,21 @@ function registerSocketHandlers(io) {
     // ── 开始游戏（仅房主）─────────────
     socket.on(EVENTS.START_GAME, () => {
       if (!currentRoom) return;
+      const roomInfo = getRoomInfo(currentRoom);
+      if (!roomInfo) {
+        socket.emit(EVENTS.GAME_ERROR, '房间不存在');
+        return;
+      }
+      if (roomInfo.host !== socket.id) {
+        socket.emit(EVENTS.GAME_ERROR, '仅房主可开始游戏');
+        return;
+      }
       const result = startGame(currentRoom);
       if (result.error) {
         socket.emit(EVENTS.GAME_ERROR, result.error);
         return;
       }
+      broadcastRoomsList();
       // 向每个玩家发送隐藏其他人手牌的状态
       broadcastGameState(io, currentRoom);
       console.log(`🃏 游戏开始: ${currentRoom}`);
@@ -113,6 +129,7 @@ function registerSocketHandlers(io) {
       leaveRoom(currentRoom, socket.id);
       const info = getRoomInfo(currentRoom);
       if (info) io.to(currentRoom).emit(EVENTS.ROOM_UPDATED, info);
+      broadcastRoomsList();
       socket.leave(currentRoom);
       currentRoom = null;
     }
