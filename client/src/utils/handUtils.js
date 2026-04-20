@@ -23,6 +23,7 @@ const SUITS = ['♠', '♥', '♦', '♣'];
 const RANKS_LIST = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
 
 function makeDeck(hand, community) {
+  if (!Array.isArray(hand) || !Array.isArray(community)) return [];
   const used = new Set([...hand, ...community].map((c) => c.rank + c.suit));
   const deck = [];
   for (const suit of SUITS) {
@@ -80,14 +81,14 @@ function evaluateFiveCardHand(cards) {
   } else if (groups[0] === 4) {
     rank = 7;
     tiebreak = [
-      grouped.find((g) => g.count === 4)?.value || 0,
-      grouped.find((g) => g.count === 1)?.value || 0,
+      grouped.find((g) => g.count === 4)?.value ?? 0,
+      grouped.find((g) => g.count === 1)?.value ?? 0,
     ];
   } else if (groups[0] === 3 && groups[1] === 2) {
     rank = 6;
     tiebreak = [
-      grouped.find((g) => g.count === 3)?.value || 0,
-      grouped.find((g) => g.count === 2)?.value || 0,
+      grouped.find((g) => g.count === 3)?.value ?? 0,
+      grouped.find((g) => g.count === 2)?.value ?? 0,
     ];
   } else if (isFlush) {
     rank = 5;
@@ -97,7 +98,7 @@ function evaluateFiveCardHand(cards) {
     tiebreak = [highStraight];
   } else if (groups[0] === 3) {
     rank = 3;
-    const trip = grouped.find((g) => g.count === 3)?.value || 0;
+    const trip = grouped.find((g) => g.count === 3)?.value ?? 0;
     const kickers = grouped
       .filter((g) => g.count === 1)
       .map((g) => g.value)
@@ -109,11 +110,11 @@ function evaluateFiveCardHand(cards) {
       .filter((g) => g.count === 2)
       .map((g) => g.value)
       .sort((a, b) => b - a);
-    const kicker = grouped.find((g) => g.count === 1)?.value || 0;
+    const kicker = grouped.find((g) => g.count === 1)?.value ?? 0;
     tiebreak = [...pairs, kicker];
   } else if (groups[0] === 2) {
     rank = 1;
-    const pair = grouped.find((g) => g.count === 2)?.value || 0;
+    const pair = grouped.find((g) => g.count === 2)?.value ?? 0;
     const kickers = grouped
       .filter((g) => g.count === 1)
       .map((g) => g.value)
@@ -159,8 +160,10 @@ export function estimateWinRate(hand, community, numOpponents = 1, simCount = 50
   if (!hand || hand.length < 2) return null;
   if (community.length > 5) return null;
 
-  const opponentCount = Math.max(1, Number(numOpponents) || 1);
-  const iterations = Math.max(1, Number(simCount) || 1);
+  const parsedOpponents = Number(numOpponents);
+  const parsedIterations = Number(simCount);
+  const opponentCount = Number.isFinite(parsedOpponents) ? Math.max(1, Math.floor(parsedOpponents)) : 1;
+  const iterations = Number.isFinite(parsedIterations) ? Math.max(1, Math.floor(parsedIterations)) : 500;
   const needed = 5 - community.length;
   let equity = 0;
   let validRuns = 0;
