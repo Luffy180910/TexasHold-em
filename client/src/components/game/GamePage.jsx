@@ -2,7 +2,6 @@ import useStore from '../../store/gameStore';
 import Card from './Card';
 import PlayerSeat from './PlayerSeat';
 import ActionPanel from './ActionPanel';
-import WinRateDisplay from './WinRateDisplay';
 
 const PHASE_LABELS = {
   preflop: '翻牌前', flop: '翻牌', turn: '转牌', river: '河牌', showdown: '摊牌',
@@ -17,7 +16,6 @@ export default function GamePage() {
   const me = players.find(p => p.id === myId);
   const isMyTurn = currentPlayer === myId && !me?.folded && !me?.allIn;
   const opponents = players.filter(p => p.id !== myId);
-  const numOpponents = opponents.filter(p => !p.folded).length;
 
   return (
     <div className="game-table">
@@ -55,11 +53,6 @@ export default function GamePage() {
               <div className="my-cards">
                 {me.hand?.map((card, i) => <Card key={i} card={card} large />)}
               </div>
-              <WinRateDisplay
-                hand={me.hand}
-                community={community}
-                numOpponents={numOpponents || 1}
-              />
             </div>
             <div className="my-info-row">
               <span className="my-name">{me.name}</span>

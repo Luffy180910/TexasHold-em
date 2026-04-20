@@ -250,33 +250,6 @@ body {
 
 .loading { color: var(--text-muted); text-align: center; padding: 60px; }
 
-/* ── Win Rate Display ── */
-.win-rate {
-  min-width: 120px;
-}
-.win-rate-label {
-  display: flex;
-  justify-content: space-between;
-  font-size: 11px;
-  color: var(--text-muted);
-  margin-bottom: 4px;
-}
-.win-rate-value {
-  font-weight: 600;
-  font-size: 13px;
-}
-.win-rate-bar {
-  height: 5px;
-  background: rgba(255,255,255,0.1);
-  border-radius: 3px;
-  overflow: hidden;
-}
-.win-rate-fill {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 0.5s ease;
-}
-
 /* ── Action Panel ── */
 .action-panel {
   width: 100%;
