@@ -60,6 +60,12 @@ npm run dev
 
 # 前端: http://localhost:5173
 # 后端: http://localhost:3001
+
+# 可选：指定前端连接的 Socket 地址（默认按当前页面主机推断到 :3001）
+# VITE_SOCKET_URL=http://localhost:3001
+
+# 可选：指定服务端允许的跨域来源（逗号分隔）
+# CORS_ORIGIN=http://localhost:5173,http://127.0.0.1:5173
 ```
 
 ## Socket 事件表
