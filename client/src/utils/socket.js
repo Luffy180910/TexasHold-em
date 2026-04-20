@@ -1,7 +1,7 @@
 import { io } from 'socket.io-client';
 
 function getSocketUrl() {
-  const envUrl = import.meta.env.VITE_SOCKET_URL?.trim();
+  const envUrl = (import.meta.env.VITE_SOCKET_URL || '').trim();
   if (envUrl) return envUrl;
   if (typeof window !== 'undefined') {
     const { protocol, hostname } = window.location;
