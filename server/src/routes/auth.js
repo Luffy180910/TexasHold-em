@@ -3,8 +3,13 @@ const router = express.Router();
 const { createUser, findUser, getUserById } = require('../db/users');
 const { signToken, authMiddleware } = require('../middleware/auth');
 
+// 包装 async handler，自动捕获异常并返回 JSON 错误
+function wrap(fn) {
+  return (req, res, next) => fn(req, res, next).catch(next);
+}
+
 // POST /api/auth/register
-router.post('/register', async (req, res) => {
+router.post('/register', wrap(async (req, res) => {
   const { username, password } = req.body || {};
   if (!username || !password) {
     return res.status(400).json({ error: '用户名和密码不能为空' });
@@ -23,10 +28,10 @@ router.post('/register', async (req, res) => {
 
   const token = signToken(user);
   res.json({ user, token });
-});
+}));
 
 // POST /api/auth/login
-router.post('/login', async (req, res) => {
+router.post('/login', wrap(async (req, res) => {
   const { username, password } = req.body || {};
   if (!username || !password) {
     return res.status(400).json({ error: '用户名和密码不能为空' });
@@ -39,15 +44,15 @@ router.post('/login', async (req, res) => {
 
   const token = signToken(user);
   res.json({ user, token });
-});
+}));
 
 // GET /api/auth/me
-router.get('/me', authMiddleware, async (req, res) => {
+router.get('/me', authMiddleware, wrap(async (req, res) => {
   const user = await getUserById(req.user.id);
   if (!user) {
     return res.status(404).json({ error: '用户不存在' });
   }
   res.json({ user });
-});
+}));
 
 module.exports = router;

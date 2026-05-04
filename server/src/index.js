@@ -69,6 +69,15 @@ if (!isDev) {
   });
 }
 
+// ── 全局错误处理（始终返回 JSON，不返回 HTML）──
+app.use((err, req, res, _next) => {
+  console.error('❌ 请求错误:', req.path, err.message);
+  if (req.path.startsWith('/api/')) {
+    return res.status(500).json({ error: err.message || '服务器内部错误' });
+  }
+  res.status(500).json({ error: '服务器内部错误' });
+});
+
 // ── 注册所有 Socket 事件处理器 ──
 registerSocketHandlers(io);
 
