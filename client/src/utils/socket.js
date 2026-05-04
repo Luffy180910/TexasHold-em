@@ -3,9 +3,11 @@ import { io } from 'socket.io-client';
 function getSocketUrl() {
   const envUrl = (import.meta.env.VITE_SOCKET_URL || '').trim();
   if (envUrl) return envUrl;
+  // 生产环境：客户端由服务端同一端口托管，直接使用同源地址
+  // 开发环境：Vite dev server (:5173) 和 Express (:3001) 不同端口，
+  //           通过 VITE_SOCKET_URL 环境变量配置（见 client/.env）
   if (typeof window !== 'undefined') {
-    const { protocol, hostname } = window.location;
-    return `${protocol}//${hostname}:3001`;
+    return window.location.origin;
   }
   return 'http://localhost:3001';
 }

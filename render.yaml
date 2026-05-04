@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: texas-holdem
+    runtime: node
+    plan: free
+    buildCommand: npm run install:all && npm run build
+    startCommand: npm run start
+    nodeVersion: 20.x
+    envVars:
+      - key: NODE_ENV
+        value: production
+    healthCheckPath: /
+    autoDeploy: true
