@@ -1,58 +1,72 @@
 // ════════════════════════════════════════
-//  房间管理器（Redis + 内存双模存储）
-//  - Redis 可用时：持久化存储，支持多进程扩展
-//  - Redis 不可用时：优雅降级至内存存储
+//  房间管理器（PostgreSQL + 内存双模存储）
+//  - PG 可用时：房间元数据持久化
+//  - PG 不可用时：优雅降级至内存存储
+//  - 游戏实例始终在内存中（PokerGame 对象）
 // ════════════════════════════════════════
 
 const { v4: uuidv4 } = require('uuid');
 const { PokerGame } = require('./engine');
-const { getClient, isAvailable } = require('../redis/client');
-const { withLock } = require('../redis/lock');
+const pool = require('../db/pool');
+const { saveRound } = require('../db/history');
+const { getLeaderboard } = require('../db/users');
 
 // ── 内存降级存储 ──────────────────────
 const memoryRooms = new Map(); // roomId → 房间元数据（不含 game 实例）
 const memoryGames = new Map(); // roomId → PokerGame 实例
 
-// ── Redis Key 前缀 ────────────────────
-const KEY_ROOM    = (id) => `room:${id}`;
-const KEY_GAME    = (id) => `game:${id}`;
-const KEY_ROOMS_SET = 'rooms:all';
-const ROOM_TTL    = 86400; // 24 小时
+// ── PG 可用性检测 ──────────────────────
+let pgChecked = false;
+let pgAvailable = false;
 
-// ── 房间自动清理：30 分钟无活动删除（内存模式）──
+async function checkPg() {
+  if (pgChecked) return pgAvailable;
+  try {
+    await pool.query('SELECT 1');
+    pgAvailable = true;
+    console.log('✅ PostgreSQL 已连接');
+  } catch {
+    pgAvailable = false;
+    console.warn('⚠️  PostgreSQL 不可用，使用内存存储作为降级方案');
+  }
+  pgChecked = true;
+  return pgAvailable;
+}
+
+// ── 房间自动清理：30 分钟无活动删除 ──
 const ROOM_IDLE_TTL = 30 * 60 * 1000;
 
 // ════════════════════════════════════════
-//  内部辅助：Redis 读写
+//  PG 操作
 // ════════════════════════════════════════
 
-async function redisGetRoom(roomId) {
-  const raw = await getClient().get(KEY_ROOM(roomId));
-  return raw ? JSON.parse(raw) : null;
+async function pgGetRoom(roomId) {
+  const result = await pool.query('SELECT * FROM rooms WHERE id = $1', [roomId]);
+  return result.rows[0] || null;
 }
 
-async function redisSetRoom(room) {
-  await getClient().set(KEY_ROOM(room.id), JSON.stringify(room), 'EX', ROOM_TTL);
-  await getClient().sadd(KEY_ROOMS_SET, room.id);
+async function pgSetRoom(room) {
+  await pool.query(
+    `INSERT INTO rooms (id, host, players, status, max_players, updated_at)
+     VALUES ($1, $2, $3, $4, $5, NOW())
+     ON CONFLICT (id) DO UPDATE SET
+       host = EXCLUDED.host,
+       players = EXCLUDED.players,
+       status = EXCLUDED.status,
+       updated_at = NOW()`,
+    [room.id, room.host, JSON.stringify(room.players), room.status, room.maxPlayers]
+  );
 }
 
-async function redisDeleteRoom(roomId) {
-  await getClient().del(KEY_ROOM(roomId));
-  await getClient().del(KEY_GAME(roomId));
-  await getClient().srem(KEY_ROOMS_SET, roomId);
+async function pgDeleteRoom(roomId) {
+  await pool.query('DELETE FROM rooms WHERE id = $1', [roomId]);
 }
 
-async function redisGetGame(roomId) {
-  const raw = await getClient().get(KEY_GAME(roomId));
-  return raw ? PokerGame.fromJSON(JSON.parse(raw)) : null;
-}
-
-async function redisSetGame(roomId, game) {
-  await getClient().set(KEY_GAME(roomId), JSON.stringify(game.toJSON()), 'EX', ROOM_TTL);
-}
-
-async function redisGetAllRoomIds() {
-  return getClient().smembers(KEY_ROOMS_SET);
+async function pgListRoomIds() {
+  const result = await pool.query(
+    "SELECT id FROM rooms WHERE status = 'waiting' ORDER BY created_at DESC"
+  );
+  return result.rows.map(r => r.id);
 }
 
 // ════════════════════════════════════════
@@ -60,13 +74,20 @@ async function redisGetAllRoomIds() {
 // ════════════════════════════════════════
 
 async function getRoom(roomId) {
-  if (isAvailable()) {
-    const room = await redisGetRoom(roomId);
-    if (!room) return null;
-    if (room.status === 'playing') {
-      room.game = await redisGetGame(roomId);
-    }
-    return room;
+  const pgOk = await checkPg();
+  if (pgOk) {
+    const row = await pgGetRoom(roomId);
+    if (!row) return null;
+    return {
+      id: row.id,
+      host: row.host,
+      players: row.players,
+      status: row.status,
+      maxPlayers: row.max_players,
+      createdAt: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
+      updatedAt: row.updated_at ? new Date(row.updated_at).getTime() : Date.now(),
+      game: memoryGames.get(roomId) || null,
+    };
   }
   const room = memoryRooms.get(roomId);
   if (!room) return null;
@@ -76,22 +97,24 @@ async function getRoom(roomId) {
 async function saveRoom(room) {
   const { game, ...meta } = room;
   meta.updatedAt = Date.now();
-  if (isAvailable()) {
-    await redisSetRoom(meta);
-    if (game) await redisSetGame(room.id, game);
+  const pgOk = await checkPg();
+  if (pgOk) {
+    await pgSetRoom(meta);
   } else {
     memoryRooms.set(room.id, meta);
-    if (game) memoryGames.set(room.id, game);
   }
+  // 游戏实例始终保存在内存中
+  if (game) memoryGames.set(room.id, game);
 }
 
 async function deleteRoom(roomId) {
-  if (isAvailable()) {
-    await redisDeleteRoom(roomId);
+  const pgOk = await checkPg();
+  if (pgOk) {
+    await pgDeleteRoom(roomId);
   } else {
     memoryRooms.delete(roomId);
-    memoryGames.delete(roomId);
   }
+  memoryGames.delete(roomId);
 }
 
 // ════════════════════════════════════════
@@ -115,71 +138,74 @@ async function createRoom(hostId, hostName) {
 }
 
 async function joinRoom(roomId, playerId, playerName) {
-  return withLock(roomId, async () => {
-    const room = await getRoom(roomId);
-    if (!room) return { error: '房间不存在' };
-    if (room.status === 'playing') return { error: '游戏已开始' };
-    if (room.players.length >= room.maxPlayers) return { error: '房间已满' };
-    if (room.players.find((p) => p.id === playerId)) return { error: '已在房间中' };
+  const room = await getRoom(roomId);
+  if (!room) return { error: '房间不存在' };
+  if (room.status === 'playing') return { error: '游戏已开始' };
+  if (room.players.length >= room.maxPlayers) return { error: '房间已满' };
+  if (room.players.find(p => p.id === playerId)) return { error: '已在房间中' };
 
-    room.players.push({ id: playerId, name: playerName, chips: 1000, ready: false });
-    await saveRoom(room);
-    return { success: true, room: _roomInfo(room) };
-  });
+  room.players.push({ id: playerId, name: playerName, chips: 1000, ready: false });
+  await saveRoom(room);
+  return { success: true, room: _roomInfo(room) };
 }
 
 async function leaveRoom(roomId, playerId) {
-  return withLock(roomId, async () => {
-    const room = await getRoom(roomId);
-    if (!room) return;
-    room.players = room.players.filter((p) => p.id !== playerId);
-    if (room.players.length === 0) {
-      await deleteRoom(roomId);
-    } else {
-      if (room.host === playerId) {
-        room.host = room.players[0].id;
-      }
-      await saveRoom(room);
+  const room = await getRoom(roomId);
+  if (!room) return;
+  room.players = room.players.filter(p => p.id !== playerId);
+  if (room.players.length === 0) {
+    await deleteRoom(roomId);
+  } else {
+    if (room.host === playerId) {
+      room.host = room.players[0].id;
     }
-  });
+    await saveRoom(room);
+  }
 }
 
 async function startGame(roomId) {
-  return withLock(roomId, async () => {
-    const room = await getRoom(roomId);
-    if (!room) return { error: '房间不存在' };
-    if (room.players.length < 2) return { error: '至少需要2名玩家' };
-    if (room.status === 'playing') return { error: '游戏已在进行中' };
+  const room = await getRoom(roomId);
+  if (!room) return { error: '房间不存在' };
+  if (room.players.length < 2) return { error: '至少需要2名玩家' };
+  if (room.status === 'playing') return { error: '游戏已在进行中' };
 
-    const game = new PokerGame(roomId, room.players);
-    room.status = 'playing';
-    room.game = game;
-    await saveRoom(room);
-    return game.startRound();
-  });
+  const game = new PokerGame(roomId, room.players);
+  room.status = 'playing';
+  room.game = game;
+  await saveRoom(room);
+  return game.startRound();
 }
 
 async function playerAction(roomId, playerId, action, amount) {
-  return withLock(roomId, async () => {
-    const room = await getRoom(roomId);
-    if (!room || !room.game) return { error: '游戏未开始' };
+  const room = await getRoom(roomId);
+  if (!room || !room.game) return { error: '游戏未开始' };
 
-    const result = room.game.playerAction(playerId, action, amount);
-    if (!result || result.error) return result;
+  const result = room.game.playerAction(playerId, action, amount);
+  if (!result || result.error) return result;
 
-    await saveRoom(room);
-    return result;
-  });
+  // 摊牌时记录游戏历史到 PG
+  if (result.type === 'showdown') {
+    saveRound(roomId, room.game.round, result).catch(err => {
+      console.error('❌ 保存游戏记录失败:', err.message);
+    });
+  }
+
+  // 每局结束后更新房间状态
+  if (room.game.phase === 'showdown') {
+    room.status = 'waiting';
+    room.game = null;
+    memoryGames.delete(roomId);
+  }
+  await saveRoom(room);
+  return result;
 }
 
 async function nextRound(roomId) {
-  return withLock(roomId, async () => {
-    const room = await getRoom(roomId);
-    if (!room || !room.game) return { error: '游戏未开始' };
-    const result = room.game.startRound();
-    await saveRoom(room);
-    return result;
-  });
+  const room = await getRoom(roomId);
+  if (!room || !room.game) return { error: '游戏未开始' };
+  const result = room.game.startRound();
+  await saveRoom(room);
+  return result;
 }
 
 async function getGameStateFor(roomId, playerId) {
@@ -195,15 +221,22 @@ async function getRoomInfo(roomId) {
 }
 
 async function listRooms() {
-  if (isAvailable()) {
-    const ids = await redisGetAllRoomIds();
-    const rooms = await Promise.all(ids.map((id) => redisGetRoom(id)));
+  const pgOk = await checkPg();
+  if (pgOk) {
+    const ids = await pgListRoomIds();
+    const rooms = await Promise.all(ids.map(id => pgGetRoom(id)));
     return rooms
-      .filter((r) => r && r.status === 'waiting')
-      .map(_roomInfo);
+      .filter(r => r && r.status === 'waiting')
+      .map(r => _roomInfo({
+        id: r.id,
+        host: r.host,
+        players: r.players,
+        status: r.status,
+        maxPlayers: r.max_players,
+      }));
   }
   return [...memoryRooms.values()]
-    .filter((r) => r.status === 'waiting')
+    .filter(r => r.status === 'waiting')
     .map(_roomInfo);
 }
 
@@ -239,4 +272,5 @@ module.exports = {
   getGameStateFor,
   getRoomInfo,
   listRooms,
+  getLeaderboard,
 };

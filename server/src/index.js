@@ -5,10 +5,10 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const { registerSocketHandlers } = require('./socket/handlers');
 const roomRoutes = require('./routes/rooms');
-const { isAvailable } = require('./redis/client');
-
-// 预加载 Redis 客户端（建立连接）
-require('./redis/client').getClient();
+const authRoutes = require('./routes/auth');
+const { getLeaderboard } = require('./db/users');
+const { initSchema } = require('./db/schema');
+const pool = require('./db/pool');
 
 const app = express();
 const httpServer = createServer(app);
@@ -45,6 +45,18 @@ app.use(express.json());
 
 // ── REST API 路由（房间列表等）──
 app.use('/api/rooms', roomRoutes);
+app.use('/api/auth', authRoutes);
+
+// 排行榜 API
+app.get('/api/leaderboard', async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 10, 50);
+    const board = await getLeaderboard(limit);
+    res.json(board);
+  } catch (err) {
+    res.status(500).json({ error: '获取排行榜失败' });
+  }
+});
 
 // ── 生产环境：托管前端构建产物 ──
 if (!isDev) {
@@ -61,6 +73,19 @@ if (!isDev) {
 registerSocketHandlers(io);
 
 const PORT = process.env.PORT || 3001;
-httpServer.listen(PORT, () => {
-  console.log(`🚀 服务器运行在 http://localhost:${PORT}${!isDev ? ' (生产模式)' : ''}`);
-});
+
+// 初始化数据库后启动服务
+async function start() {
+  try {
+    await initSchema();
+    await pool.query('SELECT 1');
+    console.log('✅ 数据库已连接');
+  } catch (err) {
+    console.warn('⚠️  数据库不可用，部分功能降级:', err.message);
+  }
+  httpServer.listen(PORT, () => {
+    console.log(`🚀 服务器运行在 http://localhost:${PORT}${!isDev ? ' (生产模式)' : ''}`);
+  });
+}
+
+start();

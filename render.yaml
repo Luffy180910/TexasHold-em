@@ -9,5 +9,16 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: JWT_SECRET
+        sync: false
+        value: CHANGE_ME_TO_RANDOM_STRING
+      - key: DATABASE_URL
+        fromDatabase:
+          name: texas-holdem-db
+          property: connectionString
     healthCheckPath: /
     autoDeploy: true
+
+databases:
+  - name: texas-holdem-db
+    plan: free

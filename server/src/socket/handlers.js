@@ -3,6 +3,8 @@ const {
   startGame, playerAction, nextRound,
   getGameStateFor, getRoomInfo, listRooms,
 } = require('../game/roomManager');
+const { verifyToken } = require('../middleware/auth');
+const { getLeaderboard } = require('../db/users');
 
 // ── 事件名称常量 ──
 const EVENTS = {
@@ -13,6 +15,7 @@ const EVENTS = {
   START_GAME:    'game:start',
   PLAYER_ACTION: 'player:action',
   NEXT_ROUND:    'game:nextRound',
+  LEADERBOARD_GET: 'leaderboard:get',
 
   // 服务端 → 客户端
   ROOM_UPDATED:  'room:updated',
@@ -20,6 +23,7 @@ const EVENTS = {
   GAME_SHOWDOWN: 'game:showdown',
   GAME_ERROR:    'game:error',
   ROOMS_LIST:    'rooms:list',
+  LEADERBOARD_RESULT: 'leaderboard:result',
 };
 
 // ── 合法操作集合 ──
@@ -64,7 +68,17 @@ function registerSocketHandlers(io) {
   };
 
   io.on('connection', (socket) => {
-    console.log(`✅ 玩家连接: ${socket.id}`);
+    // ── JWT 认证（可选）──
+    const token = socket.handshake.auth?.token;
+    if (token) {
+      const payload = verifyToken(token);
+      if (payload) {
+        socket.userId = payload.id;
+        socket.username = payload.username;
+      }
+    }
+
+    console.log(`✅ 玩家连接: ${socket.id}${socket.username ? ` (${socket.username})` : ''}`);
     let currentRoom = null;
 
     // 获取大厅房间列表
@@ -77,7 +91,8 @@ function registerSocketHandlers(io) {
         if (nameErr) { socket.emit(EVENTS.GAME_ERROR, nameErr); return; }
 
         const name = playerName.trim();
-        const roomId = await createRoom(socket.id, name);
+        const playerId = socket.userId || socket.id;
+        const roomId = await createRoom(playerId, name);
         currentRoom = roomId;
         socket.join(roomId);
         socket.emit(EVENTS.ROOM_UPDATED, await getRoomInfo(roomId));
@@ -98,7 +113,8 @@ function registerSocketHandlers(io) {
         if (nameErr) { socket.emit(EVENTS.GAME_ERROR, nameErr); return; }
 
         const name = playerName.trim();
-        const result = await joinRoom(roomId, socket.id, name);
+        const playerId = socket.userId || socket.id;
+        const result = await joinRoom(roomId, playerId, name);
         if (result && result.error) {
           socket.emit(EVENTS.GAME_ERROR, result.error);
           return;
@@ -130,16 +146,11 @@ function registerSocketHandlers(io) {
 
         const roomInfo = await getRoomInfo(currentRoom);
         if (!roomInfo) { socket.emit(EVENTS.GAME_ERROR, '房间不存在'); return; }
-        if (roomInfo.host !== socket.id) {
+        const myId = socket.userId || socket.id;
+        if (roomInfo.host !== myId) {
           socket.emit(EVENTS.GAME_ERROR, '仅房主可开始游戏');
           return;
         }
-        if (roomInfo.players.length < 2) {
-          socket.emit(EVENTS.GAME_ERROR, '至少需要2名玩家');
-          return;
-        }
-
-        const result = await startGame(currentRoom);
         if (result && result.error) {
           socket.emit(EVENTS.GAME_ERROR, result.error);
           return;
@@ -162,7 +173,8 @@ function registerSocketHandlers(io) {
         if (actionErr) { socket.emit(EVENTS.GAME_ERROR, actionErr); return; }
 
         const safeAmount = Number.isFinite(amount) ? Math.floor(amount) : 0;
-        const result = await playerAction(currentRoom, socket.id, action, safeAmount);
+        const myId = socket.userId || socket.id;
+        const result = await playerAction(currentRoom, myId, action, safeAmount);
         if (!result || result.error) {
           socket.emit(EVENTS.GAME_ERROR, result?.error || '操作失败');
           return;
@@ -188,7 +200,8 @@ function registerSocketHandlers(io) {
 
         const roomInfo = await getRoomInfo(currentRoom);
         if (!roomInfo) { socket.emit(EVENTS.GAME_ERROR, '房间不存在'); return; }
-        if (roomInfo.host !== socket.id) {
+        const myId = socket.userId || socket.id;
+        if (roomInfo.host !== myId) {
           socket.emit(EVENTS.GAME_ERROR, '仅房主可开始下一局');
           return;
         }
@@ -206,6 +219,16 @@ function registerSocketHandlers(io) {
       }
     });
 
+    // ── 获取排行榜 ──────────────────
+    socket.on(EVENTS.LEADERBOARD_GET, async () => {
+      try {
+        const board = await getLeaderboard(10);
+        socket.emit(EVENTS.LEADERBOARD_RESULT, board);
+      } catch (err) {
+        socket.emit(EVENTS.GAME_ERROR, '获取排行榜失败');
+      }
+    });
+
     // ── 断线处理 ──────────────────────
     socket.on('disconnect', async () => {
       console.log(`❌ 玩家断线: ${socket.id}`);
@@ -220,7 +243,8 @@ function registerSocketHandlers(io) {
       if (!currentRoom) return;
       const roomId = currentRoom;
       currentRoom = null;
-      await leaveRoom(roomId, socket.id);
+      const playerId = socket.userId || socket.id;
+      await leaveRoom(roomId, playerId);
       const info = await getRoomInfo(roomId);
       if (info) io.to(roomId).emit(EVENTS.ROOM_UPDATED, info);
       await broadcastRoomsList();
