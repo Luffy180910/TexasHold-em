@@ -1,0 +1,102 @@
+/* ═══════════════════════════════════════
+   Base — Reset, Variables, Typography
+   ═══════════════════════════════════════ */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* Surface */
+  --bg-primary: #0a1a0f;
+  --bg-secondary: #0d1f10;
+  --bg-surface: rgba(255, 255, 255, 0.05);
+  --bg-surface-hover: rgba(255, 255, 255, 0.09);
+
+  /* Felt */
+  --felt-dark: #054d1a;
+  --felt-mid: #076324;
+  --felt-light: #0d9633;
+  --felt-highlight: #1aac42;
+
+  /* Rail */
+  --rail: #5a3e1b;
+  --rail-light: #7a5e3b;
+
+  /* Accent */
+  --gold: #d4a017;
+  --gold-light: #f0c040;
+  --gold-glow: rgba(212, 160, 23, 0.45);
+
+  /* Cards */
+  --card-red: #c0392b;
+  --card-black: #1a1a1a;
+  --card-bg: #fefefe;
+  --card-shadow: 1px 2px 6px rgba(0, 0, 0, 0.4);
+
+  /* Text */
+  --text-primary: #f5f0e8;
+  --text-secondary: rgba(245, 240, 232, 0.75);
+  --text-muted: rgba(245, 240, 232, 0.5);
+
+  /* Action colors */
+  --color-fold: #ff5252;
+  --color-check: #42a5f5;
+  --color-call: #66bb6a;
+  --color-raise: #ffa726;
+  --color-allin: #ab47bc;
+  --color-danger: #ef5350;
+  --color-success: #66bb6a;
+
+  /* Radii */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-round: 50%;
+
+  /* Glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.06);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-blur: blur(12px);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-gold: 0 0 16px var(--gold-glow);
+
+  /* Typography */
+  --font-body: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+
+  /* Transitions */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.25s ease;
+  --transition-slow: 0.4s ease;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-font-smoothing: antialiased;
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(7, 99, 36, 0.15) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 100%, rgba(7, 99, 36, 0.08) 0%, transparent 50%);
+}
+
+.app {
+  width: 100%;
+  max-width: 960px;
+  padding: 16px;
+  min-height: 100vh;
+  position: relative;
+}
+
+/* Utility classes */
+.muted { color: var(--text-muted); font-size: 13px; }
+.loading { color: var(--text-muted); text-align: center; padding: 60px 0; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }

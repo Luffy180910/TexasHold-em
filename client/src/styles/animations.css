@@ -1,0 +1,66 @@
+/* ═══════════════════════════════════════
+   Animations — All @keyframes + utility classes
+   ═══════════════════════════════════════ */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.9) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes cardDeal {
+  from { opacity: 0; transform: translateY(-50px) scale(0.6) rotateZ(-5deg); }
+  to { opacity: 1; transform: translateY(0) scale(1) rotateZ(0deg); }
+}
+
+@keyframes cardFlip {
+  0% { transform: rotateY(0deg); }
+  40% { transform: rotateY(90deg); }
+  100% { transform: rotateY(0deg); }
+}
+
+@keyframes btnPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(212, 160, 23, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(212, 160, 23, 0); }
+}
+
+@keyframes seatGlow {
+  0%, 100% { box-shadow: 0 0 8px rgba(212, 160, 23, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(212, 160, 23, 0.6); }
+}
+
+@keyframes phasePulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+@keyframes winGlow {
+  0% { box-shadow: 0 0 0 rgba(212, 160, 23, 0); }
+  50% { box-shadow: 0 0 36px rgba(212, 160, 23, 0.6); }
+  100% { box-shadow: 0 0 0 rgba(212, 160, 23, 0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Animation utility classes */
+.anim-fade-in     { animation: fadeIn var(--transition-normal) ease; }
+.anim-card-deal   { animation: cardDeal 0.5s ease-out both; }
+.anim-card-flip   { animation: cardFlip 0.45s ease-in-out; }
+.anim-seat-glow   { animation: seatGlow 1.5s ease-in-out infinite; }
+.anim-btn-pulse   { animation: btnPulse 2s ease-in-out infinite; }
+.anim-phase       { animation: phasePulse 1s ease-in-out; }
+.anim-win         { animation: winGlow 0.8s ease-in-out 3; }
+.anim-slide-up    { animation: slideUp 0.35s ease-out both; }
+.anim-modal-in    { animation: modalIn var(--transition-normal) ease; }

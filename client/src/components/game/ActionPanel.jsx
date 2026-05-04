@@ -1,9 +1,5 @@
 import { useState, useEffect } from 'react';
 
-/**
- * 操作面板：弃牌 / 过牌 / 跟注 / 加注 / 全押
- * 支持键盘快捷键
- */
 export default function ActionPanel({ isMyTurn, me, currentBet, onAction }) {
   const [raiseAmount, setRaiseAmount] = useState('');
   const [showRaise, setShowRaise] = useState(false);
@@ -20,7 +16,6 @@ export default function ActionPanel({ isMyTurn, me, currentBet, onAction }) {
     setRaiseAmount('');
   };
 
-  // ── 键盘快捷键 ──
   useEffect(() => {
     if (!isMyTurn) return;
     const handler = (e) => {
@@ -43,7 +38,7 @@ export default function ActionPanel({ isMyTurn, me, currentBet, onAction }) {
     <div className="action-panel">
       <div className="action-hint">
         当前注: <strong>{currentBet}</strong>
-        <span className="shortcut-hint">F=弃牌 C=过牌/跟注 R=加注 A=全押</span>
+        <span className="shortcut-hint">F 弃牌 C 过牌/跟注 R 加注 A 全押</span>
       </div>
 
       <div className="action-buttons">
@@ -87,11 +82,7 @@ export default function ActionPanel({ isMyTurn, me, currentBet, onAction }) {
           <button className="btn btn-primary" onClick={handleRaise}>
             确认 <kbd>↵</kbd>
           </button>
-          <button
-            className="btn"
-            style={{ borderColor: 'rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.5)' }}
-            onClick={() => setShowRaise(false)}
-          >
+          <button className="btn btn-ghost" onClick={() => setShowRaise(false)}>
             取消
           </button>
         </div>

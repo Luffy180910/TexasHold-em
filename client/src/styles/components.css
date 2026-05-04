@@ -1,0 +1,94 @@
+/* ═══════════════════════════════════════
+   Components — Buttons, Inputs, Modals, Shared UI
+   ═══════════════════════════════════════ */
+
+/* ── Buttons ── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 9px 18px;
+  border-radius: var(--radius-sm); border: 1.5px solid;
+  cursor: pointer; font-size: 13px; font-weight: 600;
+  font-family: var(--font-body); background: transparent;
+  transition: all var(--transition-fast);
+  white-space: nowrap; user-select: none;
+}
+.btn:hover { filter: brightness(1.2); transform: translateY(-1px); }
+.btn:active { transform: scale(0.97); }
+.btn:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+
+.btn-primary   { border-color: var(--gold); color: var(--gold-light); }
+.btn-primary:hover { background: rgba(212, 160, 23, 0.1); box-shadow: var(--shadow-gold); }
+.btn-secondary { border-color: var(--color-check); color: var(--color-check); }
+.btn-danger    { border-color: var(--color-fold); color: var(--color-fold); }
+.btn-fold      { border-color: var(--color-fold); color: var(--color-fold); }
+.btn-check     { border-color: var(--color-check); color: var(--color-check); }
+.btn-call      { border-color: var(--color-call); color: var(--color-call); }
+.btn-raise     { border-color: var(--color-raise); color: var(--color-raise); }
+.btn-allin     { border-color: var(--color-allin); color: var(--color-allin); }
+
+.btn-ghost {
+  border-color: rgba(255,255,255,0.1);
+  color: var(--text-muted);
+  background: transparent;
+}
+
+.btn-small { padding: 5px 12px; font-size: 12px; }
+.btn-large { padding: 12px 32px; font-size: 15px; }
+.btn-active { background: rgba(255, 167, 38, 0.15); box-shadow: 0 0 8px rgba(255, 167, 38, 0.3); }
+.btn-pulse { animation: btnPulse 2s ease-in-out infinite; }
+
+/* ── Inputs ── */
+.input {
+  background: var(--glass-bg); border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm); color: var(--text-primary);
+  padding: 10px 14px; font-size: 14px; font-family: var(--font-body);
+  outline: none; width: 100%;
+  transition: border-color var(--transition-fast);
+}
+.input:focus { border-color: var(--gold); }
+.input::placeholder { color: var(--text-muted); }
+
+/* ── Error Toast ── */
+.error-toast {
+  position: fixed; top: 16px; right: 16px;
+  background: var(--color-danger); color: #fff;
+  padding: 10px 18px; border-radius: var(--radius-sm);
+  font-size: 14px; z-index: 100;
+  animation: toastIn var(--transition-normal) ease;
+  box-shadow: var(--shadow-md);
+}
+
+/* ── kbd ── */
+kbd {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px; font-size: 10px;
+  font-family: var(--font-mono);
+  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 3px; padding: 0 4px; line-height: 1;
+}
+
+/* ── Modal ── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.75);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 50;
+  animation: fadeIn var(--transition-normal) ease;
+}
+.modal {
+  background: var(--bg-secondary);
+  border: 2px solid var(--gold);
+  border-radius: var(--radius-lg);
+  padding: 28px 36px; text-align: center;
+  min-width: 300px; max-width: 460px;
+  box-shadow: var(--shadow-lg);
+  animation: modalIn var(--transition-normal) ease;
+}
+.modal h2 { font-size: 22px; color: var(--gold-light); margin-bottom: 8px; }
+
+/* ── Badge ── */
+.badge {
+  font-size: 11px; padding: 2px 8px; border-radius: var(--radius-xs); font-weight: 500;
+}
+.badge-host { background: rgba(212, 160, 23, 0.2); color: var(--gold-light); }
+.badge-you  { background: rgba(66, 165, 245, 0.2); color: var(--color-check); }

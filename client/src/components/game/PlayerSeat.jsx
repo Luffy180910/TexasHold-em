@@ -6,7 +6,9 @@ export default function PlayerSeat({ player, isActive }) {
   return (
     <div className={`player-seat ${isActive ? 'seat-active' : ''} ${folded ? 'seat-folded' : ''}`}>
       <div className="seat-name">{name}</div>
-      <div className="seat-chips">💰 {chips}</div>
+      <div className="seat-chips">
+        <span className="chip-icon" /> {chips}
+      </div>
       {bet > 0 && <div className="seat-bet">下注: {bet}</div>}
       <div className="seat-cards">
         {hand?.map((card, i) => <Card key={i} card={card} />)}

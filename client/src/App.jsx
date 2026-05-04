@@ -4,7 +4,7 @@ import LoginPage from './components/ui/LoginPage';
 import LobbyPage from './components/ui/LobbyPage';
 import RoomPage from './components/ui/RoomPage';
 import GamePage from './components/game/GamePage';
-import './index.css';
+import './styles/index.css';
 
 export default function App() {
   const { page, user, token, error, initSocket, cleanupSocket, fetchMe } = useStore();

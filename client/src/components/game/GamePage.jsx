@@ -2,6 +2,7 @@ import useStore from '../../store/gameStore';
 import Card from './Card';
 import PlayerSeat from './PlayerSeat';
 import ActionPanel from './ActionPanel';
+import WinRateDisplay from './WinRateDisplay';
 
 const PHASE_LABELS = {
   preflop: '翻牌前', flop: '翻牌', turn: '转牌', river: '河牌', showdown: '摊牌',
@@ -16,6 +17,7 @@ export default function GamePage() {
   const me = players.find(p => p.id === myId);
   const isMyTurn = currentPlayer === myId && !me?.folded && !me?.allIn;
   const opponents = players.filter(p => p.id !== myId);
+  const activeOpponents = opponents.filter(p => !p.folded).length;
 
   return (
     <div className="game-table">
@@ -23,23 +25,21 @@ export default function GamePage() {
       {/* 对手区域（顶部） */}
       <div className="opponents-row">
         {opponents.map(p => (
-          <PlayerSeat
-            key={p.id}
-            player={p}
-            isActive={p.id === currentPlayer}
-          />
+          <PlayerSeat key={p.id} player={p} isActive={p.id === currentPlayer} />
         ))}
       </div>
 
       {/* 牌桌中央 */}
       <div className="table-center">
         <div className="pot-display">
-          <span className="chip-icon">●</span> 底池: {pot}
+          <span className="chip-icon" /> 底池: {pot}
         </div>
         <div className="community-cards">
           {community.length === 0
             ? <span className="waiting-text">等待发牌…</span>
-            : community.map((card, i) => <Card key={i} card={card} />)
+            : community.map((card, i) => (
+              <Card key={i} card={card} />
+            ))
           }
         </div>
         <div className="phase-tag">{PHASE_LABELS[phase] || phase}</div>
@@ -53,13 +53,20 @@ export default function GamePage() {
               <div className="my-cards">
                 {me.hand?.map((card, i) => <Card key={i} card={card} large />)}
               </div>
+              <WinRateDisplay
+                hand={me.hand}
+                community={community}
+                numOpponents={activeOpponents || 1}
+              />
             </div>
             <div className="my-info-row">
               <span className="my-name">{me.name}</span>
-              <span className="my-chips">💰 {me.chips}</span>
+              <span className="my-chips">
+                <span className="chip-icon" /> {me.chips}
+              </span>
               {me.bet > 0 && <span className="my-bet">已下注: {me.bet}</span>}
-              {me.folded && <span className="tag-fold">已弃牌</span>}
-              {me.allIn && <span className="tag-allin">ALL IN</span>}
+              {me.folded && <span className="seat-tag tag-fold">已弃牌</span>}
+              {me.allIn && <span className="seat-tag tag-allin">ALL IN</span>}
             </div>
           </>
         )}
@@ -90,11 +97,13 @@ export default function GamePage() {
       {/* 摊牌结果弹窗 */}
       {showdown && (
         <div className="modal-overlay">
-          <div className="modal showdown-modal">
-            <div className="modal-trophy">🏆</div>
+          <div className="modal showdown-modal anim-modal-in">
+            <div className="modal-trophy">&#x1F3C6;</div>
             <h2>{showdown.winner.name} 获胜！</h2>
             <div className="winner-hand-tag">{showdown.winner.hand}</div>
-            <p className="winner-pot">赢得底池 <strong>{showdown.winner.pot}</strong> 筹码</p>
+            <p className="winner-pot">
+              赢得底池 <strong>{showdown.winner.pot}</strong> 筹码
+            </p>
             <div className="showdown-results">
               {showdown.players.map(p => (
                 <div key={p.id} className="showdown-row">
@@ -109,7 +118,7 @@ export default function GamePage() {
               ))}
             </div>
             <button className="btn btn-primary btn-large" onClick={nextRound}>
-              下一局 →
+              下一局
             </button>
           </div>
         </div>
