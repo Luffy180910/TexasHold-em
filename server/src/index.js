@@ -46,7 +46,6 @@ app.use(express.json());
 // ── REST API 路由（房间列表等）──
 app.use('/api/rooms', roomRoutes);
 
-<<<<<<< HEAD
 // ── 生产环境：托管前端构建产物 ──
 if (!isDev) {
   const clientDist = path.join(__dirname, '../../client/dist');
@@ -57,16 +56,6 @@ if (!isDev) {
     res.sendFile(path.join(clientDist, 'index.html'));
   });
 }
-=======
-// ── 健康检查 endpoint ──
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    redis: isAvailable() ? 'connected' : 'unavailable (using memory fallback)',
-    uptime: Math.floor(process.uptime()),
-  });
-});
->>>>>>> a3695b59e79e9429fdfd56db2d1306203f4b66a6
 
 // ── 注册所有 Socket 事件处理器 ──
 registerSocketHandlers(io);

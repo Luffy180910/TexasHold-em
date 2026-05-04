@@ -1,0 +1,14 @@
+{
+  "name": "texas-holdem",
+  "description": "4 人实时联机德州扑克",
+  "stack": "heroku-24",
+  "env": {
+    "NODE_ENV": {
+      "description": "运行环境",
+      "value": "production"
+    }
+  },
+  "buildpacks": [
+    { "url": "heroku/nodejs" }
+  ]
+}

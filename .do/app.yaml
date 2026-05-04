@@ -1,0 +1,15 @@
+name: texas-holdem
+services:
+  - name: web
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    http_port: 3001
+    source_dir: /
+    build_command: npm run build
+    run_command: npm run start
+    routes:
+      - path: /
+    envs:
+      - key: NODE_ENV
+        value: production
+        scope: RUN_AND_BUILD_TIME
